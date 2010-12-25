@@ -1,3 +1,5 @@
+(*** Geometry ***)
+
 (* Infix vector operators *)  
 infix -->
 infix <--
@@ -110,7 +112,8 @@ struct
   fun (a ** b) = cross (a, b)
 end
 
-(*** End of abstract ***)
+
+(*** Raytracer ***)
 
 signature CAMERA = 
 sig
@@ -239,6 +242,8 @@ struct
 end
 
 
+(*** Runner ***)
+
 structure Geometry3D = Geometry(VectorSpace3D(RealSpace(Real)))
 structure FlatCamera3D = FlatCamera(Geometry3D)
 structure SimpleScene3D = SimpleScene(Geometry3D)
@@ -246,6 +251,8 @@ structure SimpleRaytracer = Raytracer(
   structure G = Geometry3D
   structure S = SimpleScene3D
   structure C = FlatCamera3D)
+
+type render_worker = FlatCamera3D.coords -> SimpleRaytracer.pixel
 
 fun renderPixel p_scene p_camera =
 let
@@ -255,7 +262,24 @@ in
   fn coords => tracer (projector coords)
 end
 
-fun renderPGM (renderWorker: FlatCamera3D.coords -> SimpleRaytracer.pixel) (w, h) =
+fun antialias (renderWorker: render_worker) =
+  fn (x, y) =>
+  let
+    val ds = [
+      (0.0, 0.0),
+      (0.5, 0.0),
+      (0.0, 0.5),
+      (0.5, 0.5)];
+    fun shift (x, y) (dx, dy) = (x+dx, y+dy);
+    val subpixels = map renderWorker (map (shift (x, y)) ds);
+  in
+    foldl (fn ({z}, {z=acc}) => {z=acc+z*0.25}) {z=0.0} subpixels
+  end
+
+fun renderPGM 
+  (renderWorker: render_worker)
+  filename 
+  (w, h) =
 let
   fun grayscale maxDepth z = 
     255 - (
@@ -271,29 +295,21 @@ let
        | (false, true) => b
        | (false, false) => 0.0
 
-  val pic = 
-    List.tabulate (h, fn y => 
-      List.tabulate (w, fn x => 
-      #z (renderWorker (Real.fromInt x, Real.fromInt y))
-      )
+  val pic = List.tabulate (
+    w*h, 
+    (fn n =>
+      let 
+        val (x, y) = (n mod w, n div w)
+      in
+        #z (renderWorker (Real.fromInt x, Real.fromInt y))
+      end)
     );
 
-  val maxDepth = foldl 
-    (fn (row, currentMax) => 
-      maxNormal (currentMax, foldl 
-        maxNormal 
-        0.0 
-        row))
-    0.0 
-    pic;
+  val maxDepth = foldl maxNormal 0.0 pic;
+  val text = String.implode 
+    (map (chr o (grayscale maxDepth)) pic);
 
-  val text = String.concat 
-    (map 
-      (fn row => String.implode 
-        (map (chr o (grayscale maxDepth)) row))
-      pic);
-
-  val file = TextIO.openOut "trace.pgm"
+  val file = TextIO.openOut filename
 in
   TextIO.output (file, String.concat [
     "P5\n",
@@ -310,16 +326,21 @@ in
 end
 
 local open Geometry3D; open SimpleScene3D; open FlatCamera3D in
-  val scene_data = Group [
-    Sphere {
-      center = (2.0, 0.3, 0.0),
-      radius = 0.5
-      },
-    Sphere {
-      center = (2.0, ~0.3, 0.0),
-      radius = 0.5
-      }
-    ];
+  val scene_data = Group (
+    List.tabulate (
+      10, 
+      (fn n => 
+        let
+          val z = 3.0 + 0.2 * real(n);
+          val phi = 2.0 * Math.pi * real(n)/10.0;
+        in
+          Sphere {
+            center = (z, Math.cos phi, Math.sin phi),
+            radius = 0.5
+            }
+        end)
+      )
+    )
   val cam = Camera (
     { 
       origin = (0.0, 0.0, 0.0), 
@@ -331,5 +352,6 @@ local open Geometry3D; open SimpleScene3D; open FlatCamera3D in
     )
 end;
 
-renderPGM (renderPixel scene_data cam) (512, 512)
+(* renderPGM (antialias (renderPixel scene_data cam)) "tracer.pgm" (512, 512) *)
+renderPGM (antialias (renderPixel scene_data cam)) "tracer.pgm" (512, 512) 
 
