@@ -37,6 +37,7 @@ sig
   val ray: vector * vector -> ray
 
   (* Axes *)
+  val null: vector
   val x: vector
   val y: vector
   val z: vector
@@ -89,6 +90,7 @@ struct
     type vector = scalar * scalar * scalar
     type ray = {origin: vector, direction: vector}
     
+    val null = (zero, zero, zero)
     val x = (one, zero, zero)
     val y = (zero, one, zero)
     val z = (zero, zero, one)
@@ -153,13 +155,23 @@ signature SCENE =
 sig
   structure Geometry: GEOMETRY
 
-  type sphere = {center: Geometry.vector, radius: Geometry.scalar}
-  type plane = {pivot: Geometry.vector, normal: Geometry.vector}
+  type sphere = {
+    center: Geometry.vector, 
+    radius: Geometry.scalar
+    }
+  type plane = {
+    pivot: Geometry.vector, 
+    normal: Geometry.vector
+    }
+  type collision = {
+    point: Geometry.vector, 
+    normal: Geometry.vector
+    }
   datatype scene = Sphere of sphere
                  | Plane of plane
                  | Group of (scene list)
 
-  val intersect: scene -> Geometry.ray -> Geometry.vector option
+  val intersect: Geometry.ray -> scene -> collision option
 end
 
 signature RAYTRACER =
@@ -220,21 +232,44 @@ struct
   structure Geometry = G
 
   local open G; open Real in
-    type sphere = {center: G.vector, radius: G.scalar}
-    type plane = {pivot: G.vector, normal: G.vector}
+    type sphere = {
+      center: vector, 
+      radius: scalar
+      }
+    type plane = {
+      pivot: vector, 
+      normal: vector
+      }
+    type collision = {
+      point: vector, 
+      normal: vector
+      }
     datatype scene = Sphere of sphere
                    | Plane of plane
                    | Group of (scene list)
 
-    fun intersect p_scene (p_ray as {origin, direction}) = 
+    fun intersect p_ray p_scene = 
     let 
+      val {origin, direction} = p_ray;
+
       fun sqlength v = v dot v
       fun dist v = sqlength (origin --> v)
 
-      fun nearest (NONE, NONE) = NONE
-        | nearest (NONE, SOME x) = SOME x
-        | nearest (SOME x, NONE) = SOME x
-        | nearest (SOME x, SOME y) = SOME (if dist x < dist y then x else y)
+      fun visible collision: collision option =
+        if ((origin --> #point collision) dot direction) > zero then
+          SOME collision
+        else
+          NONE
+
+      fun nearest (NONE, opt): collision option = opt
+        | nearest (opt, NONE) = opt
+        | nearest (SOME x, SOME y) = SOME (
+          if (direction dot (#point x --> #point y)) > zero then
+            x 
+          else 
+            y
+          )
+
 
       (* Sphere *)
       fun ray_sphere {center, radius} = 
@@ -253,8 +288,19 @@ struct
             val off = cat (radius, d_sq); (* distance to intersections *)
             val p1 = shifted (~off)
             and p2 = shifted (off)
+
+            fun normal p = norm (center --> p)
           in
-            nearest (SOME p1, SOME p2)
+            nearest (
+              visible {
+                point = p1,
+                normal = normal p1
+              },
+              visible {
+                point = p2,
+                normal = normal p2
+              }
+              )
           end
       end
 
@@ -266,26 +312,25 @@ struct
         let 
           val k = ((origin --> pivot) dot normal) / (direction dot normal);
         in
-          if k<zero then
-            SOME (origin +-> (k*->direction))
-          else
-            NONE
+          visible {
+            point = origin +-> (k*->direction),
+            normal = normal
+          }
         end
 
       (* Object group *)
       fun ray_subscene subscenes =
-        foldl 
-          nearest 
-          NONE 
-          (map 
-            (fn x => intersect x p_ray) 
-            subscenes
-          )
+      (foldl
+        (fn (curr, acc) => nearest(intersect p_ray curr, acc))
+        NONE
+        subscenes
+        )
     in
-      case p_scene of
+      (case p_scene of
            Sphere s => ray_sphere s
          | Plane p => ray_plane p
          | Group g => ray_subscene g
+      )
     end
   end
 end
@@ -299,17 +344,19 @@ struct
   structure Camera = C
 
   local open Geometry in
-    type pixel = {z: scalar}
+    type pixel = {z: scalar, angle: scalar}
 
     fun trace scene ray: pixel = 
-    let
-      val dist = 
-        (case S.intersect scene ray of 
-              NONE => Real.posInf
-            | SOME v => length (#origin ray --> v))
-    in
-      {z=dist}                   
-    end
+    case S.intersect ray scene of 
+         NONE => {
+           z = Real.posInf, 
+           angle = Real.zero
+           }
+       | SOME {point, normal} => {
+           z = length (#origin ray --> point),
+           angle = normal dot (#direction ray)
+           } 
+    
   end
 end
 
@@ -343,9 +390,19 @@ fun antialias (renderWorker: render_worker) =
       (0.0, 0.5),
       (0.5, 0.5)];
     fun shift (x, y) (dx, dy) = (x+dx, y+dy);
-    val subpixels = map renderWorker (map (shift (x, y)) ds);
+    val subpixels = map 
+      renderWorker 
+      (map 
+        (shift (x, y)) 
+        ds
+      );
+    fun upd (acc, v) = acc + v*0.25
   in
-    foldl (fn ({z}, {z=acc}) => {z=acc+z*0.25}) {z=0.0} subpixels
+    foldl 
+      (fn ({z, angle}, {z=zacc, angle=aacc}) => 
+        {z=upd (zacc, z), angle=upd (aacc, angle)}) 
+      {z=0.0, angle=0.0} 
+      subpixels
   end
 
 fun renderPGM 
@@ -418,21 +475,25 @@ local open Geometry3D; open SimpleScene3D; open FlatCamera3D in
     ),
     Plane {
       pivot = (0.0, 0.0, 0.0),
-      normal = (0.0, 0.0, ~1.0)
+      normal = (0.0, 0.0, 1.0)
       }
     ]
   val cam = Camera (
     ray ( 
-      (0.0, 0.0, 0.0), 
-      (1.0, 0.0, 0.0)
+      (0.0, 0.0, 0.5), 
+      (1.0, 0.0, 0.3)
       ),
     Screen (
       (512.0, 512.0), 
-      Math.pi/6.0
+      Math.pi/4.0
       )
     )
 end;
 
-(* renderPGM (antialias (renderPixel scene_data cam)) "tracer.pgm" (512, 512) *)
-renderPGM (renderPixel scene_data cam) "tracer.pgm" (512, 512);
+val renderer = renderPixel scene_data cam;
+(*
+(* Turn antialiasing on *)
+val renderer = antialias renderer;
+*)
+val () = renderPGM renderer "tracer.pgm" (512, 512);
 
