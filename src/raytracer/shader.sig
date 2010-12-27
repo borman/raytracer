@@ -5,7 +5,7 @@ sig
   structure Geometry: GEOMETRY
 
   datatype reflectiveness 
-    = Smooth
+    = Dull
     | Glossy of Real.real
   datatype refractiveness
     = Opaque
@@ -13,7 +13,9 @@ sig
         transparency: Real.real,
         refraction: Real.real
         }
-  datatype method = Phong
+  datatype diffuseMethod = Lambert
+  datatype specularMethod = Phong | Blinn
+  type method = diffuseMethod * specularMethod
   type material = {
     shader: method,
     ambientColor: Rgb.color,
@@ -32,6 +34,8 @@ sig
     toLights: Geometry.vector list,
     normal: Geometry.vector
     }
+
+  val defaultMaterial: material
 
   val shade: material * hit -> Rgb.color
 end

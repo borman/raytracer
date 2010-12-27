@@ -108,7 +108,7 @@ end
 
 local open Geometry; open Scene; open FlatCamera in
   fun solidMtl color = {
-    shader = Shader.Phong,
+    shader = (Shader.Lambert, Shader.Blinn),
     ambientColor = color,
     ambient = 0.2,
     diffuseColor = color,
@@ -116,7 +116,7 @@ local open Geometry; open Scene; open FlatCamera in
     specularColor = {r=1.0, g=1.0, b=1.0},
     specular = 0.4,
     shininess = 50.0,
-    reflect = Shader.Smooth,
+    reflect = Shader.Dull,
     refract = Shader.Opaque
     }
   val scene_data = Group [

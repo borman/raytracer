@@ -30,18 +30,6 @@ struct
     fun intersect ray scene = 
     let 
       val {origin, direction} = ray;
-      val baseMtl: material = {
-        shader = Phong,
-        ambientColor = {r = one, g = one, b = one},
-        ambient = zero,
-        diffuseColor = {r = one, g = one, b = one},
-        diffuse = one,
-        specularColor = {r = one, g = one, b = one},
-        specular = zero,
-        shininess = zero,
-        reflect = Smooth,
-        refract = Opaque
-        };
 
       fun visible collision: collision option =
         if ((origin --> #point collision) dot direction) > zero then
@@ -115,7 +103,7 @@ struct
       (* Material application *)
         | hit (_, Material (mtl, subscene)) = hit (mtl, subscene)
     in
-      hit (baseMtl, scene)
+      hit (defaultMaterial, scene)
     end
   end
 end

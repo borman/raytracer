@@ -9,7 +9,7 @@ struct
 
   local open G; open C; open R in
     datatype reflectiveness 
-      = Smooth
+      = Dull
       | Glossy of real
     datatype refractiveness
       = Opaque
@@ -17,7 +17,9 @@ struct
           transparency: real,
           refraction: real
           }
-    datatype method = Phong
+    datatype diffuseMethod = Lambert
+    datatype specularMethod = Phong | Blinn
+    type method = diffuseMethod * specularMethod
     type material = {
       shader: method,
       ambientColor: color,
@@ -37,55 +39,96 @@ struct
       normal: vector
       }
 
+    val defaultMaterial: material = {
+      shader = (Lambert, Phong),
+      ambientColor = {r = one, g = one, b = one},
+      ambient = zero,
+      diffuseColor = {r = one, g = one, b = one},
+      diffuse = one,
+      specularColor = {r = one, g = one, b = one},
+      specular = zero,
+      shininess = zero,
+      reflect = Dull,
+      refract = Opaque
+      };
+
     local
-      fun phong (mtl: material, hit: hit) =
+      fun accumulate shadeFunc lights = foldl
+          (fn (toLight, acc) => acc + shadeFunc toLight)
+          zero
+          lights
+
+      (* Ambient lighting: trivial *)
+      fun ambient (mtl: material, hit: hit) =
+        #ambient hit;
+
+      (* Diffuse lighting *)
+      (* Lambert model *)
+      fun lambert (mtl: material, hit: hit) =
       let
-        val ambient = #ambient mtl * #ambient hit;
-        val {
-          normal, 
-          toCamera, 
-          toLights, 
-          ...} = hit;
-        val {
-          diffuse=matDiffuse, 
-          specular=matSpecular,
-          shininess=matShininess, 
-          ...} = mtl;
-
-        fun calcDiffuse toLight = matDiffuse * (toLight dot normal);
-        val diffuse = foldl
-          (fn (toLight, acc) => acc + calcDiffuse toLight)
-          zero
-          toLights
-
-        fun reflect (vec, normal) = 
-        let
-          val d = ((vec dot normal) *-> normal) --> vec;
-        in
-          vec <-- (two *-> d)
-        end;
-        fun calcSpecular toLight = matSpecular * 
-            Math.pow (
-              (reflect (toLight, normal)) dot toCamera, 
-              matShininess
-              );
-        val specular = foldl
-          (fn (toLight, acc) => acc + calcSpecular toLight)
-          zero
-          toLights
+        fun diffusePart toLight = toLight dot (#normal hit)
       in
-        Rgb.add (
-          Rgb.add (
-            Rgb.mul (ambient, #ambientColor mtl), 
-            Rgb.mul (diffuse, #diffuseColor mtl)
-            ),
-          Rgb.mul (specular, #specularColor mtl)
-          )
+        accumulate diffusePart (#toLights hit)
+      end
+
+      (* Specular lighting *)
+      local
+        fun phongFamily specular (mtl: material, hit: hit) =
+        let
+          val {normal, toCamera, ...} = hit
+          fun specularPart toLight = Math.pow (
+              specular (toLight, normal, toCamera), 
+              #shininess mtl
+              )
+        in
+          accumulate specularPart (#toLights hit)
+        end
+
+        (* Phong model *)
+        fun phongSpecular (toLight, normal, toCamera) =
+        let
+          fun reflect (vec, normal) = 
+          let
+            val d = ((vec dot normal) *-> normal) --> vec;
+          in
+            vec <-- (two *-> d)
+          end
+        in
+          (reflect (toLight, normal)) dot toCamera
+        end
+
+        (* Blinn model *)
+        fun blinnSpecular (toLight, normal, toCamera) =
+        let
+          fun bisect (vec, normal) =
+            norm (vec +-> normal)
+        in
+          (bisect (toLight, toCamera)) dot normal
+        end
+      in
+        val phong = phongFamily phongSpecular;  
+        val blinn = phongFamily blinnSpecular;  
       end
     in
       fun shade (mtl: material, hit) = 
-        case #shader mtl of
-             Phong => phong (mtl, hit)
+      let
+        val (diffuseMethod, specularMethod) = #shader mtl;
+        val diffuse = (case diffuseMethod of
+                            Lambert => lambert
+                            );
+        val specular = (case specularMethod of
+                             Phong => phong
+                           | Blinn => blinn
+                             );
+      in
+        Rgb.add (
+          Rgb.add (
+            Rgb.mul (#ambient mtl * ambient (mtl, hit), #ambientColor mtl),
+            Rgb.mul (#diffuse mtl * diffuse (mtl, hit), #diffuseColor mtl)
+            ),
+          Rgb.mul (#specular mtl * specular (mtl, hit), #specularColor mtl)
+          )
+      end
     end
   end
 end
