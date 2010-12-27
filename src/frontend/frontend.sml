@@ -113,8 +113,9 @@ local open Geometry; open Scene; open FlatCamera in
     ambient = 0.2,
     diffuseColor = color,
     diffuse = 1.0,
-    specular = 0.0,
-    shininess = 0.0,
+    specularColor = {r=1.0, g=1.0, b=1.0},
+    specular = 0.4,
+    shininess = 50.0,
     reflect = Shader.Smooth,
     refract = Shader.Opaque
     }
@@ -126,7 +127,7 @@ local open Geometry; open Scene; open FlatCamera in
           let
             val p = real (n div 10);
             val q = real (n mod 10);
-            val base = (2.0, 0.0, 0.7);
+            val base = (2.0, 0.0, 0.1);
             val middle = base +-> (5.0, 5.0, 0.0);
             val pos = base +-> (p, q, 0.0);
             val r = 2.0 / (1.0 + length (middle --> pos));

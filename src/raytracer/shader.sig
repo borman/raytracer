@@ -18,6 +18,7 @@ sig
     shader: method,
     ambientColor: Rgb.color,
     diffuseColor: Rgb.color,
+    specularColor: Rgb.color,
     ambient: Real.real,
     diffuse: Real.real,
     specular: Real.real,
@@ -26,8 +27,9 @@ sig
     refract: refractiveness
     }
   type hit = {
+    ambient: Real.real,
     toCamera: Geometry.vector,
-    toLight: Geometry.vector,
+    toLights: Geometry.vector list,
     normal: Geometry.vector
     }
 

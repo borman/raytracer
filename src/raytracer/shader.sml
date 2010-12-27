@@ -22,6 +22,7 @@ struct
       shader: method,
       ambientColor: color,
       diffuseColor: color,
+      specularColor: color,
       ambient: real,
       diffuse: real,
       specular: real,
@@ -30,13 +31,57 @@ struct
       refract: refractiveness
       }
     type hit = {
+      ambient: real,
       toCamera: vector,
-      toLight: vector,
+      toLights: vector list,
       normal: vector
       }
 
     local
-      fun phong (mtl: material, hit: hit) = #ambientColor mtl
+      fun phong (mtl: material, hit: hit) =
+      let
+        val ambient = #ambient mtl * #ambient hit;
+        val {
+          normal, 
+          toCamera, 
+          toLights, 
+          ...} = hit;
+        val {
+          diffuse=matDiffuse, 
+          specular=matSpecular,
+          shininess=matShininess, 
+          ...} = mtl;
+
+        fun calcDiffuse toLight = matDiffuse * (toLight dot normal);
+        val diffuse = foldl
+          (fn (toLight, acc) => acc + calcDiffuse toLight)
+          zero
+          toLights
+
+        fun reflect (vec, normal) = 
+        let
+          val d = ((vec dot normal) *-> normal) --> vec;
+        in
+          vec <-- (two *-> d)
+        end;
+        fun calcSpecular toLight = matSpecular * 
+            Math.pow (
+              (reflect (toLight, normal)) dot toCamera, 
+              matShininess
+              );
+        val specular = foldl
+          (fn (toLight, acc) => acc + calcSpecular toLight)
+          zero
+          toLights
+      in
+        Rgb.add (
+          Rgb.add (
+            Rgb.mul (ambient, #ambientColor mtl), 
+            Rgb.mul (diffuse, #diffuseColor mtl)
+            ),
+          Rgb.mul (specular, #specularColor mtl)
+          )
+      end
     in
       fun shade (mtl: material, hit) = 
         case #shader mtl of

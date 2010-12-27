@@ -28,8 +28,8 @@ struct
           +-> neg (halfwidth *-> horizontal) 
           +-> neg (halfheight *-> vertical);
 
-      val screenX = ((halfwidth+halfwidth)/width) *-> horizontal;
-      val screenY = ((halfheight+halfheight)/height) *-> vertical 
+      val screenX = (halfwidth * two / width) *-> horizontal;
+      val screenY = (halfheight * two / height) *-> vertical 
     in
       fn (x, y) => ray (
         origin,

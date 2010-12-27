@@ -36,6 +36,7 @@ struct
         ambient = zero,
         diffuseColor = {r = one, g = one, b = one},
         diffuse = one,
+        specularColor = {r = one, g = one, b = one},
         specular = zero,
         shininess = zero,
         reflect = Smooth,

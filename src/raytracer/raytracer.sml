@@ -3,6 +3,7 @@ functor Raytracer (structure S: SCENE
                    sharing C.Geometry.Real 
                          = S.Geometry.Real 
                          = S.Shader.Real 
+                         = S.Shader.Geometry.Real
                          = S.Shader.Rgb.Real): RAYTRACER =
 struct
   structure Geometry = C.Geometry
@@ -18,17 +19,31 @@ struct
       }
 
     fun trace scene ray: pixel = 
-    case S.intersect ray scene of 
-         NONE => {
-           z = Real.posInf, 
-           angle = Real.zero,
-           color = {r=Real.zero, g=Real.zero, b=Real.zero}
-           }
-       | SOME ({point, normal, material, ...}: S.collision) => {
-           z = length (#origin ray --> point),
-           angle = normal dot (#direction ray),
-           color = #ambientColor material
-           }
+    let
+      fun hit (point, normal) =
+      let
+        val light = (Real.fromInt(10), Real.fromInt(0), Real.fromInt(10))
+      in
+        {
+          ambient = Real.one,
+          toCamera = neg (#direction ray),
+          toLights = [norm (point --> light)],
+          normal = normal
+        }
+      end
+    in
+      case S.intersect ray scene of 
+           NONE => {
+             z = Real.posInf, 
+             angle = Real.zero,
+             color = {r=Real.zero, g=Real.zero, b=Real.zero}
+             }
+         | SOME ({point, normal, material, ...}: S.collision) => {
+             z = length (#origin ray --> point),
+             angle = normal dot (#direction ray),
+             color = Shader.shade (material, hit (point, normal))
+             }
+    end
 
     fun renderPixel scene camera =
     let

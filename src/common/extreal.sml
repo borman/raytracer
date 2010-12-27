@@ -4,6 +4,7 @@ struct
 
   val zero = 0.0
   val one = 1.0
+  val two = 2.0
   val epsilon = 1E~12
 
   fun isZero a = abs(a) < epsilon

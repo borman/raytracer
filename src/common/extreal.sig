@@ -4,6 +4,7 @@ sig
 
   val zero: real
   val one: real
+  val two: real
   val epsilon: real
   
   val isZero: real -> bool
