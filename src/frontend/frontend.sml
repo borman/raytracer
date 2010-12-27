@@ -1,19 +1,14 @@
 (*** Runner ***)
 
-structure Geometry = Geometry(ExtReal)
-structure Rgb = Rgb(ExtReal)
-structure Image = Image(
-  structure R = ExtReal
-  structure C = Rgb)
-structure Shader = Shader(
-  structure R = ExtReal
+structure Image = Image (Rgb)
+structure Shader = Shader (
   structure C = Rgb
   structure G = Geometry)
-structure FlatCamera = FlatCamera(Geometry)
-structure Scene = Scene(
+structure FlatCamera = FlatCamera (Geometry)
+structure Scene = Scene (
   structure G = Geometry
   structure S = Shader)
-structure Raytracer = Raytracer(
+structure Raytracer = Raytracer (
   structure S = Scene
   structure C = FlatCamera)
 

@@ -1,6 +1,7 @@
 functor FlatCamera(G: GEOMETRY): CAMERA =
 struct
   structure Geometry = G
+  exception Direction
 
   local open G; open Real in
     type coords = scalar * scalar
@@ -15,7 +16,10 @@ struct
         Screen ((width, height), angle)) = cam;
       
       val camv = direction;
-      val horizontal = norm (camv cross z); (* FIXME: camv || z is bad *)
+      val horizontal = if camv || z then (* FIXME: camv || z is bad *)
+          raise Direction
+        else
+          norm (camv cross z); 
       val vertical = neg (norm (horizontal cross camv));
       
       val halfdiag = length camv * Math.tan angle;

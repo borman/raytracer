@@ -1,17 +1,16 @@
 signature SHADER =
 sig
-  structure Real: EXTREAL
   structure Rgb: RGB
   structure Geometry: GEOMETRY
 
   datatype reflectiveness 
     = Dull
-    | Glossy of Real.real
+    | Glossy of Geometry.scalar
   datatype refractiveness
     = Opaque
     | Transparent of {
-        transparency: Real.real,
-        refraction: Real.real
+        transparency: Geometry.scalar,
+        refraction: Geometry.scalar
         }
   datatype diffuseMethod = Lambert
   datatype specularMethod = Phong | Blinn
@@ -21,15 +20,15 @@ sig
     ambientColor: Rgb.color,
     diffuseColor: Rgb.color,
     specularColor: Rgb.color,
-    ambient: Real.real,
-    diffuse: Real.real,
-    specular: Real.real,
-    shininess: Real.real,
+    ambient: Geometry.scalar,
+    diffuse: Geometry.scalar,
+    specular: Geometry.scalar,
+    shininess: Geometry.scalar,
     reflect: reflectiveness,
     refract: refractiveness
     }
   type hit = {
-    ambient: Real.real,
+    ambient: Geometry.scalar,
     toCamera: Geometry.vector,
     toLights: Geometry.vector list,
     normal: Geometry.vector

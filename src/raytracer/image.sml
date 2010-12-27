@@ -1,9 +1,6 @@
-functor Image (structure R: EXTREAL
-               structure C: RGB
-               sharing C.Real = R) =
+functor Image (R: RGB) =
 struct
-  structure Real = R
-  structure Rgb = C
+  structure Rgb = R
 
   type 'a image = {
     width: int, 

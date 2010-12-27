@@ -1,6 +1,5 @@
 functor Scene(structure G: GEOMETRY
-              structure S: SHADER
-              sharing S.Real = S.Rgb.Real = G.Real): SCENE =
+              structure S: SHADER): SCENE =
 struct
   structure Geometry = G
   structure Shader = S

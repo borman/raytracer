@@ -1,10 +1,5 @@
 functor Raytracer (structure S: SCENE
-                   structure C: CAMERA
-                   sharing C.Geometry.Real 
-                         = S.Geometry.Real 
-                         = S.Shader.Real 
-                         = S.Shader.Geometry.Real
-                         = S.Shader.Rgb.Real): RAYTRACER =
+                   structure C: CAMERA): RAYTRACER =
 struct
   structure Geometry = C.Geometry
   structure Scene = S

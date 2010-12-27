@@ -1,7 +1,5 @@
 signature GEOMETRY =
 sig
-  structure Real: EXTREAL
-
   (* Types *)
   type scalar = Real.real
   type vector = scalar * scalar * scalar

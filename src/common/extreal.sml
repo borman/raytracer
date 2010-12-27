@@ -11,4 +11,7 @@ struct
   fun inv a = one / a
 end
 
+(* Set as a primary Real type *)
+structure Real = ExtReal
+
 (* vim: set ft=sml tw=76 nowrap et: *)

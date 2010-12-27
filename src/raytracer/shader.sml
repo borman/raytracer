@@ -1,13 +1,10 @@
-functor Shader (structure R: EXTREAL
-                structure C: RGB
-                structure G: GEOMETRY
-                sharing G.Real = C.Real = R): SHADER =
+functor Shader (structure C: RGB
+                structure G: GEOMETRY): SHADER =
 struct
-  structure Real = R
   structure Rgb = C
   structure Geometry = G
 
-  local open G; open C; open R in
+  local open G; open C; open Real in
     datatype reflectiveness 
       = Dull
       | Glossy of real

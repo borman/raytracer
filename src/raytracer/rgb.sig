@@ -1,6 +1,5 @@
 signature RGB =
 sig
-  structure Real: EXTREAL;
   type color = {
     r: Real.real,
     g: Real.real,

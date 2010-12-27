@@ -1,9 +1,7 @@
-functor Geometry(R: EXTREAL) : GEOMETRY =
+structure Geometry : GEOMETRY =
 struct 
-  structure Real = R
-
-  local open R in
-    type scalar = R.real
+  local open Real in
+    type scalar = real
     type vector = scalar * scalar * scalar
     type ray = {origin: vector, direction: vector}
     
