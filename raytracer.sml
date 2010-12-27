@@ -337,7 +337,7 @@ struct
       fun ray_sphere {center, radius} = 
       let
         val v = direction; (* along the ray; normalized *)
-        val p = (center dot v) *-> v; (* closest to the center *)
+        val p = origin +-> (((origin -->center) dot v) *-> v); (* closest to the center *)
         val d_sq = sqlength (center --> p) (* distance to the center *)
       in
         if d_sq > radius*radius then
