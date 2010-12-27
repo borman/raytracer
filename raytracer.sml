@@ -153,8 +153,60 @@ sig
   val projector: camera -> coords -> Geometry.ray
 end
 
+signature RGB =
+sig
+  structure Real: EXTREAL;
+  type color = {
+    r: Real.real,
+    g: Real.real,
+    b: Real.real
+    }
+
+  val map: (Real.real -> Real.real) -> color -> color
+  val zip: (Real.real * Real.real -> Real.real) -> color * color -> color
+  val add: color * color -> color
+  val mul: Real.real * color -> color
+end
+
+signature SHADER =
+sig
+  structure Real: EXTREAL
+  structure Rgb: RGB
+  structure Geometry: GEOMETRY
+
+  datatype reflectiveness 
+    = Smooth
+    | Glossy of Real.real
+  datatype refractiveness
+    = Opaque
+    | Transparent of {
+        transparency: Real.real,
+        refraction: Real.real
+        }
+  datatype method = Phong
+  type material = {
+    shader: method,
+    ambientColor: Rgb.color,
+    diffuseColor: Rgb.color,
+    ambient: Real.real,
+    diffuse: Real.real,
+    specular: Real.real,
+    shininess: Real.real,
+    reflect: reflectiveness,
+    refract: refractiveness
+    }
+  type hit = {
+    toCamera: Geometry.vector,
+    toLight: Geometry.vector,
+    normal: Geometry.vector
+    }
+
+  val shade: material * hit -> Rgb.color
+end
+
 signature SCENE =
 sig
+  structure Shader: SHADER
   structure Geometry: GEOMETRY
 
   type sphere = {
@@ -165,39 +217,17 @@ sig
     pivot: Geometry.vector, 
     normal: Geometry.vector
     }
-  datatype reflectiveness 
-    = Smooth
-    | Glossy of Geometry.scalar
-  datatype refractiveness
-    = Opaque
-    | Transparent of {
-        transparency: Geometry.scalar,
-        refraction: Geometry.scalar
-        }
-  type color = {
-    r: Geometry.scalar, 
-    g: Geometry.scalar,
-    b: Geometry.scalar
-    }
-  type material = {
-    ambientColor: color,
-    diffuseColor: color,
-    ambient: Geometry.scalar,
-    diffuse: Geometry.scalar,
-    specular: Geometry.scalar,
-    shininess: Geometry.scalar,
-    reflect: reflectiveness,
-    refract: refractiveness
-    }
   datatype object 
     = Sphere of sphere
     | Plane of plane
     | Group of (object list)
-    | Material of material * object
+    | Material of Shader.material * object
 
   type collision = {
     point: Geometry.vector, 
-    normal: Geometry.vector
+    normal: Geometry.vector,
+    object: object,
+    material: Shader.material
     }
 
   val intersect: Geometry.ray -> object -> collision option
@@ -212,8 +242,34 @@ sig
   type pixel
 
   val trace: Scene.object -> Geometry.ray -> pixel
+  val renderPixel: Scene.object -> Camera.camera -> Camera.coords -> pixel
 end
 
+
+functor Rgb(R: EXTREAL): RGB =
+struct
+  structure Real = R
+
+  local open R in
+    type color = {
+      r: real,
+      g: real,
+      b: real
+      }
+
+    fun map f {r, g, b} = 
+      {r=f r, g=f g, b=f b}
+    fun zip f ({r=r1, g=g1, b=b1}, {r=r2, g=g2, b=b2}) =
+      {r=f (r1, r2), g=f (g1, g2), b=f (b1, b2)}
+
+    fun saturate r = max (zero, min (one, r))
+
+    fun add (col1, col2) = 
+      map saturate (zip (op +) (col1, col2))
+    fun mul (k, col) = 
+      map (saturate o (fn x => k*x)) col
+  end
+end
 
 functor FlatCamera(G: GEOMETRY): CAMERA =
 struct
@@ -256,11 +312,61 @@ struct
   end 
 end
 
-functor SimpleScene(G: GEOMETRY): SCENE =
+functor Shader (structure R: EXTREAL
+                structure C: RGB
+                structure G: GEOMETRY
+                sharing G.Real = C.Real = R): SHADER =
 struct
+  structure Real = R
+  structure Rgb = C
   structure Geometry = G
 
-  local open G; open Real in
+  local open G; open C; open R in
+    datatype reflectiveness 
+      = Smooth
+      | Glossy of real
+    datatype refractiveness
+      = Opaque
+      | Transparent of {
+          transparency: real,
+          refraction: real
+          }
+    datatype method = Phong
+    type material = {
+      shader: method,
+      ambientColor: color,
+      diffuseColor: color,
+      ambient: real,
+      diffuse: real,
+      specular: real,
+      shininess: real,
+      reflect: reflectiveness,
+      refract: refractiveness
+      }
+    type hit = {
+      toCamera: vector,
+      toLight: vector,
+      normal: vector
+      }
+
+    local
+      fun phong (mtl: material, hit: hit) = #ambientColor mtl
+    in
+      fun shade (mtl: material, hit) = 
+        case #shader mtl of
+             Phong => phong (mtl, hit)
+    end
+  end
+end
+
+functor Scene(structure G: GEOMETRY
+              structure S: SHADER
+              sharing S.Real = S.Rgb.Real = G.Real): SCENE =
+struct
+  structure Geometry = G
+  structure Shader = S
+
+  local open G; open S; open Real in
     type sphere = {
       center: vector, 
       radius: scalar
@@ -269,44 +375,24 @@ struct
       pivot: vector, 
       normal: vector
       }
-    type collision = {
-      point: vector, 
-      normal: vector
-      }
-    datatype reflectiveness 
-      = Smooth
-      | Glossy of scalar
-    datatype refractiveness
-      = Opaque
-      | Transparent of {
-          transparency: scalar,
-          refraction: scalar
-          }
-    type color = {
-      r: scalar, 
-      g: scalar,
-      b: scalar
-      }
-    type material = {
-      ambientColor: color,
-      diffuseColor: color,
-      ambient: scalar,
-      diffuse: scalar,
-      specular: scalar,
-      shininess: scalar,
-      reflect: reflectiveness,
-      refract: refractiveness
-      }
     datatype object 
       = Sphere of sphere
       | Plane of plane
       | Group of (object list)
       | Material of material * object
 
+    type collision = {
+      point: vector, 
+      normal: vector,
+      object: object,
+      material: S.material
+      }
+
     fun intersect ray scene = 
     let 
       val {origin, direction} = ray;
       val baseMtl: material = {
+        shader = Phong,
         ambientColor = {r = one, g = one, b = one},
         ambient = zero,
         diffuseColor = {r = one, g = one, b = one},
@@ -334,96 +420,115 @@ struct
 
 
       (* Sphere *)
-      fun ray_sphere {center, radius} = 
-      let
-        val v = direction; (* along the ray; normalized *)
-        val p = origin +-> (((origin -->center) dot v) *-> v); (* closest to the center *)
-        val d_sq = sqlength (center --> p) (* distance to the center *)
-      in
-        if d_sq > radius*radius then
-          NONE
-        else
-          let
-            fun cat (r, c_sq) = Math.sqrt (r*r - c_sq); (* find a cathetus *)
-            fun shifted len = p +-> (len *-> v)
-
-            val off = cat (radius, d_sq); (* distance to intersections *)
-            val p1 = shifted (~off)
-            and p2 = shifted (off)
-
-            fun normal p = norm (center --> p)
-          in
-            nearest (
-              visible {
-                point = p1,
-                normal = normal p1
-              },
-              visible {
-                point = p2,
-                normal = normal p2
-              }
-            )
-          end
-      end
-
-      (* Infinite plane *)
-      fun ray_plane {pivot, normal} =
-      if direction -| normal then
-        NONE
-      else
-        let 
-          val k = ((origin --> pivot) dot normal) / (direction dot normal);
+      fun hit (mtl, sphere as Sphere {center, radius}) = 
+        let
+          val v = direction; (* along the ray; normalized *)
+          val p = origin +-> (((origin -->center) dot v) *-> v); (* closest to the center *)
+          val d_sq = sqlength (center --> p) (* distance to the center *)
         in
-          visible {
-            point = origin +-> (k*->direction),
-            normal = normal
-          }
+          if d_sq > radius*radius then
+            NONE
+          else
+            let
+              fun cat (r, c_sq) = Math.sqrt (r*r - c_sq); (* find a cathetus *)
+              fun shifted len = p +-> (len *-> v)
+
+              val off = cat (radius, d_sq); (* distance to intersections *)
+              val p1 = shifted (~off)
+              and p2 = shifted (off)
+
+              fun normal p = norm (center --> p)
+              fun coll p = visible {
+                point = p,
+                normal = normal p,
+                object = sphere,
+                material = mtl
+                }
+            in
+              nearest (coll p1, coll p2)
+            end
         end
 
+      (* Infinite plane *)
+        | hit (mtl, plane as Plane {pivot, normal}) =
+        if direction -| normal then
+          NONE
+        else
+          let 
+            val k = ((origin --> pivot) dot normal) / (direction dot normal);
+          in
+            visible {
+              point = origin +-> (k*->direction),
+              normal = normal,
+              object = plane,
+              material = mtl
+            }
+          end
+
       (* Object group *)
-      fun ray_subscene subscenes =
-      (foldl
-        (fn (curr, acc) => nearest(intersect ray curr, acc))
-        NONE
-        subscenes
-        )
+        | hit (mtl, Group subscenes) = 
+        foldl
+          (fn (curr, acc) => nearest(hit (mtl, curr), acc))
+          NONE
+          subscenes
+
+      (* Material application *)
+        | hit (_, Material (mtl, subscene)) = hit (mtl, subscene)
     in
-      (case scene of
-            Sphere s => ray_sphere s
-          | Plane p => ray_plane p
-          | Group g => ray_subscene g
-      )
+      hit (baseMtl, scene)
     end
   end
 end
 
 functor Raytracer (structure S: SCENE
                    structure C: CAMERA
-                   sharing C.Geometry.Real = S.Geometry.Real): RAYTRACER =
+                   sharing C.Geometry.Real 
+                         = S.Geometry.Real 
+                         = S.Shader.Real 
+                         = S.Shader.Rgb.Real): RAYTRACER =
 struct
   structure Geometry = C.Geometry
   structure Scene = S
+  structure Shader = S.Shader
   structure Camera = C
 
   local open Geometry in
-    type pixel = {z: scalar, angle: scalar}
+    type pixel = {
+      z: scalar, 
+      angle: scalar,
+      color: Shader.Rgb.color
+      }
 
     fun trace scene ray: pixel = 
     case S.intersect ray scene of 
          NONE => {
            z = Real.posInf, 
-           angle = Real.zero
+           angle = Real.zero,
+           color = {r=Real.zero, g=Real.zero, b=Real.zero}
            }
-       | SOME {point, normal} => {
+       | SOME ({point, normal, material, ...}: S.collision) => {
            z = length (#origin ray --> point),
-           angle = normal dot (#direction ray) 
-           } 
-    
+           angle = normal dot (#direction ray),
+           color = #ambientColor material
+           }
+
+    fun renderPixel scene camera =
+    let
+      val projector = Camera.projector camera;
+      val tracer = trace scene
+    in
+      tracer o projector
+    end
   end
 end
 
-structure Image =
+functor Image (structure R: EXTREAL
+               structure C: RGB
+               sharing C.Real = R) =
 struct
+  structure Real = R
+  structure Rgb = C
+
   type 'a image = {
     width: int, 
     height: int,
@@ -458,6 +563,15 @@ struct
       )
     }
 
+  fun map f ({width, height, pixels}: 'a image) = {
+    width = width,
+    height = height,
+    pixels = Vector.tabulate (
+      width * height,
+      fn n => f (Vector.sub (pixels, n))
+      )
+    }
+
   fun foldl f base (img: 'a image) = Vector.foldl f base (#pixels img)
 
   fun saveGray (img: gray_image, filename) =
@@ -474,28 +588,56 @@ struct
       ]);  
     TextIO.closeOut file
   end
+
+  fun saveRGB (img: Rgb.color image, filename) =
+  let
+    open Real
+    val file = TextIO.openOut filename
+    fun rgb_to_str {r, g, b} = String.implode (
+      List.map
+        (fn x => chr (round (fromInt(255) * x)))
+        [r, g, b]
+      )
+  in
+    TextIO.output (file, String.concat (
+      [
+        "P6\n",
+        List.foldr 
+          (fn (n, acc) => (Int.toString n) ^ " " ^ acc) 
+          "\n" 
+          [#width img, #height img, 255] 
+      ] @ 
+      Vector.foldr 
+        (fn (col, acc) => (rgb_to_str col)::acc)
+        []
+        (#pixels img)
+      ));  
+    TextIO.closeOut file
+  end
 end
 
 (*** Runner ***)
 
-structure Geometry3D = Geometry(ExtReal)
-structure FlatCamera3D = FlatCamera(Geometry3D)
-structure SimpleScene3D = SimpleScene(Geometry3D)
-structure SimpleRaytracer = Raytracer(
-  structure G = Geometry3D
-  structure S = SimpleScene3D
-  structure C = FlatCamera3D)
+structure Geometry = Geometry(ExtReal)
+structure Rgb = Rgb(ExtReal)
+structure Image = Image(
+  structure R = ExtReal
+  structure C = Rgb)
+structure Shader = Shader(
+  structure R = ExtReal
+  structure C = Rgb
+  structure G = Geometry)
+structure FlatCamera = FlatCamera(Geometry)
+structure Scene = Scene(
+  structure G = Geometry
+  structure S = Shader)
+structure Raytracer = Raytracer(
+  structure S = Scene
+  structure C = FlatCamera)
 
-type render_worker = FlatCamera3D.coords -> SimpleRaytracer.pixel
-type image = SimpleRaytracer.pixel Image.image
+type render_worker = FlatCamera.coords -> Raytracer.pixel
+type image = Raytracer.pixel Image.image
 
-fun renderPixel p_scene p_camera =
-let
-  val projector = FlatCamera3D.projector p_camera;
-  val tracer = SimpleRaytracer.trace p_scene
-in
-  fn coords => tracer (projector coords)
-end
 
 fun antialias (renderWorker: render_worker) =
   fn (x, y) =>
@@ -512,12 +654,17 @@ fun antialias (renderWorker: render_worker) =
         (shift (x, y)) 
         ds
       );
-    fun upd (acc, v) = acc + v*0.25
+    fun upd_real (v, acc) = acc + v*0.25
+    fun upd_rgb (v, acc) = Rgb.add(acc, Rgb.mul(0.25, v)) 
+    fun upd_pix (v: Raytracer.pixel, acc: Raytracer.pixel) = {
+      z = upd_real (#z v, #z acc),
+      angle = upd_real (#angle v, #angle acc),
+      color = upd_rgb (#color v, #color acc)
+      }
   in
     foldl 
-      (fn ({z, angle}, {z=zacc, angle=aacc}) => 
-        {z=upd (zacc, z), angle=upd (aacc, angle)}) 
-      {z=0.0, angle=0.0} 
+      upd_pix
+      {z=0.0, angle=0.0, color={r=0.0, g=0.0, b=0.0}} 
       subpixels
   end
 
@@ -564,12 +711,31 @@ in
   Image.saveGray (textImg, filename)
 end
 
+fun saveColors (img: image, filename) =
+let
+  val rgbImg = Image.map 
+    (#color)
+    img
+in
+  Image.saveRGB (rgbImg, filename)
+end
 
 
 
 (** Data **)
 
-local open Geometry3D; open SimpleScene3D; open FlatCamera3D in
+local open Geometry; open Scene; open FlatCamera in
+  fun solidMtl color = {
+    shader = Shader.Phong,
+    ambientColor = color,
+    ambient = 0.2,
+    diffuseColor = color,
+    diffuse = 1.0,
+    specular = 0.0,
+    shininess = 0.0,
+    reflect = Shader.Smooth,
+    refract = Shader.Opaque
+    }
   val scene_data = Group [
     Group (
       List.tabulate (
@@ -581,19 +747,26 @@ local open Geometry3D; open SimpleScene3D; open FlatCamera3D in
             val base = (2.0, 0.0, 0.7);
             val middle = base +-> (5.0, 5.0, 0.0);
             val pos = base +-> (p, q, 0.0);
-            val r = 2.0 / (1.0 + length (middle --> pos))
+            val r = 2.0 / (1.0 + length (middle --> pos));
+            val color = {r=p/10.0, g=q/10.0, b=1.0};
           in
-            Sphere {
-              center = pos,
-              radius = r
-              }
+            Material (
+              solidMtl color,
+              Sphere {
+                center = pos,
+                radius = r
+                }
+              )
           end)
         )
     ),
-    Plane {
-      pivot = (0.0, 0.0, 0.0),
-      normal = (0.0, 0.0, 1.0)
-      }
+    Material (
+      solidMtl {r=0.5, g=0.5, b=0.5},
+      Plane {
+        pivot = (0.0, 0.0, 0.0),
+        normal = (0.0, 0.0, 1.0)
+        }
+      )
     ]
   val cam = Camera (
     ray ( 
@@ -613,7 +786,7 @@ end;
 fun main (arg0:string, argv: string list) =
 let
   val do_antialias = true;
-  val renderer = renderPixel scene_data cam;
+  val renderer = Raytracer.renderPixel scene_data cam;
   (* Turn antialiasing on *)
   val renderer = if do_antialias then
                    antialias renderer
@@ -624,6 +797,7 @@ let
   val () = print "Rendered, saving...\n";
   val () = saveZ (img, "ray_z.pgm");
   val () = saveNormals (img, "ray_normals.pgm")
+  val () = saveColors (img, "ray_colors.ppm")
 in
   0
 end;
