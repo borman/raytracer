@@ -1,0 +1,7 @@
+local
+  $(SML_LIB)/basis/basis.mlb 
+  ../common/common.mlb
+in
+  geometry.sig
+  geometry.sml
+end

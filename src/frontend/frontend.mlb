@@ -1,0 +1,8 @@
+local
+  $(SML_LIB)/basis/basis.mlb 
+  ../common/common.mlb
+  ../geometry/geometry.mlb
+  ../raytracer/raytracer.mlb
+in
+  frontend.sml
+end

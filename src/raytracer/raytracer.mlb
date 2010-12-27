@@ -1,0 +1,19 @@
+local
+  $(SML_LIB)/basis/basis.mlb 
+  ../common/common.mlb
+  ../geometry/geometry.mlb
+in
+  camera.sig
+  rgb.sig
+  shader.sig
+  scene.sig
+  raytracer.sig
+
+  flatcamera.sml
+  image.sml
+  raytracer.sml
+  rgb.sml
+  scene.sml
+  shader.sml
+end
+
