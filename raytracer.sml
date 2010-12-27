@@ -576,12 +576,15 @@ local open Geometry3D; open SimpleScene3D; open FlatCamera3D in
         100, 
         (fn n => 
           let
-            val z = 1.0 + 0.1 * real(n);
-            val phi = 1.0 * Math.pi * real(n)/10.0;
-            val r =  real(n)/30.0
+            val p = real (n div 10);
+            val q = real (n mod 10);
+            val base = (2.0, 0.0, 0.7);
+            val middle = base +-> (5.0, 5.0, 0.0);
+            val pos = base +-> (p, q, 0.0);
+            val r = 2.0 / (1.0 + length (middle --> pos))
           in
             Sphere {
-              center = (z, Math.cos phi, Math.sin phi),
+              center = pos,
               radius = r
               }
           end)
@@ -594,8 +597,8 @@ local open Geometry3D; open SimpleScene3D; open FlatCamera3D in
     ]
   val cam = Camera (
     ray ( 
-      (0.0, 0.0, 0.5), 
-      (1.0, 0.2, 0.5)
+      (0.0, 0.0, 3.0), 
+      (2.5, 2.0, 1.0)
       ),
     Screen (
       (512.0, 512.0), 
