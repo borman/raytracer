@@ -26,12 +26,16 @@ struct
       material: S.material
       }
 
+    (* Collisions nearer than sqrt(cutoff) will be ignored *)
+    val cutoff_sq = 1E~10;
+
     fun intersect ray scene = 
     let 
       val {origin, direction} = ray;
 
       fun visible collision: collision option =
-        if ((origin --> #point collision) dot direction) > zero then
+        if (nearer (direction, origin, #point collision)) andalso
+           (sqlength (origin --> #point collision) > cutoff_sq) then
           SOME collision
         else
           NONE
@@ -39,7 +43,7 @@ struct
       fun nearest (NONE, opt): collision option = opt
         | nearest (opt, NONE) = opt
         | nearest (SOME x, SOME y) = SOME (
-          if (direction dot (#point x --> #point y)) > zero then
+          if nearer (direction, #point x, #point y) then
             x 
           else 
             y

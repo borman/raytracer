@@ -34,6 +34,7 @@ sig
   val sqlength: vector -> scalar
   val length: vector -> scalar
   val norm: vector -> vector
+  val nearer: vector * vector * vector -> bool
 
   (* Parallellity/perpendicularity tests *)
   val ||  : vector * vector -> bool

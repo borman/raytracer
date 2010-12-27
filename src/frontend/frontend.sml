@@ -114,7 +114,19 @@ local open Geometry; open Scene; open FlatCamera in
     reflect = Shader.Dull,
     refract = Shader.Opaque
     }
-  val scene_data = Group [
+  val lights = [
+    {
+      point = (8.0, 0.0, 10.0),
+      diffuse = 0.5,
+      specular = 0.5
+    },
+    {
+      point = (0.0, 8.0, 10.0),
+      diffuse = 0.5,
+      specular = 0.5
+    }
+    ]
+  val scene = Group [
     Group (
       List.tabulate (
         100, 
@@ -164,7 +176,7 @@ end;
 fun main (arg0:string, argv: string list) =
 let
   val do_antialias = true;
-  val renderer = Raytracer.renderPixel scene_data cam;
+  val renderer = Raytracer.renderPixel (scene, lights) cam;
   (* Turn antialiasing on *)
   val renderer = if do_antialias then
                    antialias renderer

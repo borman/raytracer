@@ -27,10 +27,15 @@ sig
     reflect: reflectiveness,
     refract: refractiveness
     }
+  type light = {
+    point: Geometry.vector,
+    diffuse: Geometry.scalar,
+    specular: Geometry.scalar
+    }
   type hit = {
     ambient: Geometry.scalar,
     toCamera: Geometry.vector,
-    toLights: Geometry.vector list,
+    toLights: (Geometry.vector * light) list,
     normal: Geometry.vector
     }
 

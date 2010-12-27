@@ -40,6 +40,9 @@ struct
     fun (a +-> b) = add (a, b)
     fun (a *-> b) = mul (a, b)
 
+    (* Check if a is nearer than b along dir *)
+    fun nearer (dir, a, b) = (dir dot (a --> b)) > zero
+
     (* Parallellity/perpendicularity tests *)
     fun (a || b) = isNull(a cross b)
     fun (a -| b) = isZero(a dot b)

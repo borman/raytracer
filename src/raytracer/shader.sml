@@ -7,12 +7,12 @@ struct
   local open G; open C; open Real in
     datatype reflectiveness 
       = Dull
-      | Glossy of real
+      | Glossy of scalar
     datatype refractiveness
       = Opaque
       | Transparent of {
-          transparency: real,
-          refraction: real
+          transparency: scalar,
+          refraction: scalar
           }
     datatype diffuseMethod = Lambert
     datatype specularMethod = Phong | Blinn
@@ -22,17 +22,22 @@ struct
       ambientColor: color,
       diffuseColor: color,
       specularColor: color,
-      ambient: real,
-      diffuse: real,
-      specular: real,
-      shininess: real,
+      ambient: scalar,
+      diffuse: scalar,
+      specular: scalar,
+      shininess: scalar,
       reflect: reflectiveness,
       refract: refractiveness
       }
+    type light = {
+      point: vector,
+      diffuse: scalar,
+      specular: scalar
+    }
     type hit = {
-      ambient: real,
+      ambient: scalar,
       toCamera: vector,
-      toLights: vector list,
+      toLights: (vector * light) list,
       normal: vector
       }
 
@@ -63,7 +68,8 @@ struct
       (* Lambert model *)
       fun lambert (mtl: material, hit: hit) =
       let
-        fun diffusePart toLight = toLight dot (#normal hit)
+        fun diffusePart (toLight, light) = 
+          (#diffuse light) * (toLight dot (#normal hit))
       in
         accumulate diffusePart (#toLights hit)
       end
@@ -73,10 +79,10 @@ struct
         fun phongFamily specular (mtl: material, hit: hit) =
         let
           val {normal, toCamera, ...} = hit
-          fun specularPart toLight = Math.pow (
-              specular (toLight, normal, toCamera), 
-              #shininess mtl
-              )
+          fun specularPart (toLight, light) = (#specular light) * Math.pow (
+            specular (toLight, normal, toCamera), 
+            #shininess mtl
+            )
         in
           accumulate specularPart (#toLights hit)
         end
