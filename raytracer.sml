@@ -59,6 +59,7 @@ sig
 
   (* Compound vector ops *)
   val sub: vector * vector -> vector
+  val sqlength: vector -> scalar
   val length: vector -> scalar
   val norm: vector -> vector
 
@@ -115,7 +116,8 @@ struct
 
     (* Compound vector ops *)
     fun sub (v1, v2) = add (v1, neg v2)
-    fun length v = Math.sqrt (v dot v)
+    fun sqlength v = v dot v
+    fun length v = Math.sqrt (sqlength v)
     fun norm v = mul(inv (length v), v)
 
     (* Infix synonyms *)
@@ -163,15 +165,42 @@ sig
     pivot: Geometry.vector, 
     normal: Geometry.vector
     }
+  datatype reflectiveness 
+    = Smooth
+    | Glossy of Geometry.scalar
+  datatype refractiveness
+    = Opaque
+    | Transparent of {
+        transparency: Geometry.scalar,
+        refraction: Geometry.scalar
+        }
+  type color = {
+    r: Geometry.scalar, 
+    g: Geometry.scalar,
+    b: Geometry.scalar
+    }
+  type material = {
+    ambientColor: color,
+    diffuseColor: color,
+    ambient: Geometry.scalar,
+    diffuse: Geometry.scalar,
+    specular: Geometry.scalar,
+    shininess: Geometry.scalar,
+    reflect: reflectiveness,
+    refract: refractiveness
+    }
+  datatype object 
+    = Sphere of sphere
+    | Plane of plane
+    | Group of (object list)
+    | Material of material * object
+
   type collision = {
     point: Geometry.vector, 
     normal: Geometry.vector
     }
-  datatype scene = Sphere of sphere
-                 | Plane of plane
-                 | Group of (scene list)
 
-  val intersect: Geometry.ray -> scene -> collision option
+  val intersect: Geometry.ray -> object -> collision option
 end
 
 signature RAYTRACER =
@@ -182,7 +211,7 @@ sig
 
   type pixel
 
-  val trace: Scene.scene -> Geometry.ray -> pixel
+  val trace: Scene.object -> Geometry.ray -> pixel
 end
 
 
@@ -244,16 +273,49 @@ struct
       point: vector, 
       normal: vector
       }
-    datatype scene = Sphere of sphere
-                   | Plane of plane
-                   | Group of (scene list)
+    datatype reflectiveness 
+      = Smooth
+      | Glossy of scalar
+    datatype refractiveness
+      = Opaque
+      | Transparent of {
+          transparency: scalar,
+          refraction: scalar
+          }
+    type color = {
+      r: scalar, 
+      g: scalar,
+      b: scalar
+      }
+    type material = {
+      ambientColor: color,
+      diffuseColor: color,
+      ambient: scalar,
+      diffuse: scalar,
+      specular: scalar,
+      shininess: scalar,
+      reflect: reflectiveness,
+      refract: refractiveness
+      }
+    datatype object 
+      = Sphere of sphere
+      | Plane of plane
+      | Group of (object list)
+      | Material of material * object
 
-    fun intersect p_ray p_scene = 
+    fun intersect ray scene = 
     let 
-      val {origin, direction} = p_ray;
-
-      fun sqlength v = v dot v
-      fun dist v = sqlength (origin --> v)
+      val {origin, direction} = ray;
+      val baseMtl: material = {
+        ambientColor = {r = one, g = one, b = one},
+        ambient = zero,
+        diffuseColor = {r = one, g = one, b = one},
+        diffuse = one,
+        specular = zero,
+        shininess = zero,
+        reflect = Smooth,
+        refract = Opaque
+        };
 
       fun visible collision: collision option =
         if ((origin --> #point collision) dot direction) > zero then
@@ -300,7 +362,7 @@ struct
                 point = p2,
                 normal = normal p2
               }
-              )
+            )
           end
       end
 
@@ -321,15 +383,15 @@ struct
       (* Object group *)
       fun ray_subscene subscenes =
       (foldl
-        (fn (curr, acc) => nearest(intersect p_ray curr, acc))
+        (fn (curr, acc) => nearest(intersect ray curr, acc))
         NONE
         subscenes
         )
     in
-      (case p_scene of
-           Sphere s => ray_sphere s
-         | Plane p => ray_plane p
-         | Group g => ray_subscene g
+      (case scene of
+            Sphere s => ray_sphere s
+          | Plane p => ray_plane p
+          | Group g => ray_subscene g
       )
     end
   end
@@ -354,12 +416,65 @@ struct
            }
        | SOME {point, normal} => {
            z = length (#origin ray --> point),
-           angle = normal dot (#direction ray)
+           angle = normal dot (#direction ray) 
            } 
     
   end
 end
 
+structure Image =
+struct
+  type 'a image = {
+    width: int, 
+    height: int,
+    pixels: 'a vector
+    }
+  type gray_image = {
+    width: int, 
+    height: int,
+    pixels: CharVector.vector
+    }
+
+  fun render renderer (w, h): 'a image = {
+    width = w,
+    height = h,
+    pixels = Vector.tabulate (
+      w*h, 
+      (fn n =>
+        let 
+          val (x, y) = (n mod w, n div w)
+        in
+          renderer (Real.fromInt x, Real.fromInt y)
+        end)
+      )
+    }
+
+  fun mapToGray f ({width, height, pixels}: 'a image) = {
+    width = width,
+    height = height,
+    pixels = CharVector.tabulate (
+      (width * height),
+      fn n => f (Vector.sub (pixels, n))
+      )
+    }
+
+  fun foldl f base (img: 'a image) = Vector.foldl f base (#pixels img)
+
+  fun saveGray (img: gray_image, filename) =
+  let
+    val file = TextIO.openOut filename
+  in
+    TextIO.output (file, String.concat [
+      "P5\n",
+      List.foldr 
+        (fn (n, acc) => (Int.toString n) ^ " " ^ acc) 
+        "\n" 
+        [#width img, #height img, 255],
+      #pixels img 
+      ]);  
+    TextIO.closeOut file
+  end
+end
 
 (*** Runner ***)
 
@@ -372,6 +487,7 @@ structure SimpleRaytracer = Raytracer(
   structure C = FlatCamera3D)
 
 type render_worker = FlatCamera3D.coords -> SimpleRaytracer.pixel
+type image = SimpleRaytracer.pixel Image.image
 
 fun renderPixel p_scene p_camera =
 let
@@ -405,10 +521,7 @@ fun antialias (renderWorker: render_worker) =
       subpixels
   end
 
-fun renderPGM 
-  (renderWorker: render_worker)
-  filename 
-  (w, h) =
+fun saveZ (img: image, filename) =
 let
   fun grayscale maxDepth z = 
     255 - (
@@ -417,6 +530,7 @@ let
       else
         255
       );
+
   fun maxNormal (a, b) =
     case (Real.isNormal(a), Real.isNormal(b)) of
          (true, true) => Real.max(a, b)
@@ -424,51 +538,51 @@ let
        | (false, true) => b
        | (false, false) => 0.0
 
-  val pic = Vector.tabulate (
-    w*h, 
-    (fn n =>
-      let 
-        val (x, y) = (n mod w, n div w)
-      in
-        #z (renderWorker (Real.fromInt x, Real.fromInt y))
-      end)
+  val maxDepth = Real.min (
+    10.0, 
+    Image.foldl 
+      (fn (pix, acc) => maxNormal (#z pix, acc))
+      0.0 
+      img
     );
-
-  val maxDepth = Vector.foldl maxNormal 0.0 pic;
-  val text = CharVector.tabulate (
-    w*h,
-    (fn n => chr (grayscale maxDepth (Vector.sub (pic, n))))
-    )
-
-  val file = TextIO.openOut filename
+  val textImg = Image.mapToGray 
+    (fn pix => chr (grayscale maxDepth (#z pix)))
+    img
 in
-  TextIO.output (file, String.concat [
-    "P5\n",
-    foldr 
-      (fn (l, r) => l ^ " " ^ r) 
-      "\n" 
-      (map 
-        Int.toString 
-        [w, h, 200]),
-    text
-    ]) 
-    before 
-    TextIO.closeOut file
+  Image.saveGray (textImg, filename)
 end
+
+fun saveNormals (img: image, filename) =
+let
+  fun grayscale angle = 
+    Real.round (Real.min(1.0, Real.abs(angle)) * 255.0)
+
+  val textImg = Image.mapToGray 
+    (fn pix => chr (grayscale (#angle pix)))
+    img
+in
+  Image.saveGray (textImg, filename)
+end
+
+
+
+
+(** Data **)
 
 local open Geometry3D; open SimpleScene3D; open FlatCamera3D in
   val scene_data = Group [
     Group (
       List.tabulate (
-        30, 
+        100, 
         (fn n => 
           let
-            val z = 3.0 + 0.2 * real(n);
+            val z = 1.0 + 0.1 * real(n);
             val phi = 1.0 * Math.pi * real(n)/10.0;
+            val r =  real(n)/30.0
           in
             Sphere {
               center = (z, Math.cos phi, Math.sin phi),
-              radius = 0.5
+              radius = r
               }
           end)
         )
@@ -481,7 +595,7 @@ local open Geometry3D; open SimpleScene3D; open FlatCamera3D in
   val cam = Camera (
     ray ( 
       (0.0, 0.0, 0.5), 
-      (1.0, 0.0, 0.3)
+      (1.0, 0.2, 0.5)
       ),
     Screen (
       (512.0, 512.0), 
@@ -490,10 +604,25 @@ local open Geometry3D; open SimpleScene3D; open FlatCamera3D in
     )
 end;
 
-val renderer = renderPixel scene_data cam;
-(*
-(* Turn antialiasing on *)
-val renderer = antialias renderer;
-*)
-val () = renderPGM renderer "tracer.pgm" (512, 512);
 
+(** Evaluation **)
+
+fun main (arg0:string, argv: string list) =
+let
+  val do_antialias = true;
+  val renderer = renderPixel scene_data cam;
+  (* Turn antialiasing on *)
+  val renderer = if do_antialias then
+                   antialias renderer
+                 else
+                   renderer;
+  val () = print "Rendering...\n";
+  val img = Image.render renderer (512, 512);
+  val () = print "Rendered, saving...\n";
+  val () = saveZ (img, "ray_z.pgm");
+  val () = saveNormals (img, "ray_normals.pgm")
+in
+  0
+end;
+
+main ("raytracer", []);
