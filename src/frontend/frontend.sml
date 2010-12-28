@@ -109,9 +109,9 @@ local open Geometry; open Scene; open FlatCamera in
     diffuseColor = color,
     diffuse = 1.0,
     specularColor = {r=1.0, g=1.0, b=1.0},
-    specular = 0.4,
-    shininess = 50.0,
-    reflect = Shader.Dull,
+    specular = 1.0,
+    shininess = 100.0,
+    reflect = Shader.Glossy 0.7,
     refract = Shader.Opaque
     }
   val lights = [
@@ -138,12 +138,15 @@ local open Geometry; open Scene; open FlatCamera in
             val middle = base +-> (5.0, 5.0, 0.0);
             val pos = base +-> (p, q, 0.0);
             val r = 2.0 / (1.0 + length (middle --> pos));
-            val color = {r=p/10.0, g=q/10.0, b=1.0 - (p+q)/20.0};
+            val color = {
+              r = p/10.0, 
+              g = q/10.0, 
+              b = 1.0 - Math.sqrt((p*p + q*q)/2.0)/10.0};
           in
             Material (
               solidMtl color,
               Sphere {
-                center = pos,
+                center = pos +-> (0.0, 0.0, r * 2.0),
                 radius = r
                 }
               )
@@ -160,8 +163,8 @@ local open Geometry; open Scene; open FlatCamera in
     ]
   val cam = Camera (
     ray ( 
-      (0.0, 0.0, 3.0), 
-      (2.5, 2.0, 1.0)
+      (~1.0, ~1.0, 4.0), 
+      (2.5, 2.0, 2.2)
       ),
     Screen (
       (512.0, 512.0), 

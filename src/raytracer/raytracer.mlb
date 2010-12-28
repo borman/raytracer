@@ -9,10 +9,10 @@ in
   scene.sig
   raytracer.sig
 
+  rgb.sml
   flatcamera.sml
   image.sml
   raytracer.sml
-  rgb.sml
   scene.sml
   shader.sml
 end
