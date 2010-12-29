@@ -154,7 +154,7 @@ local open Geometry; open Scene; open FlatCamera in
         )
     ),
     Material (
-      solidMtl {r=0.1, g=0.1, b=0.1},
+      solidMtl {r=1.0, g=1.0, b=1.0},
       Plane {
         pivot = (0.0, 0.0, 0.0),
         normal = (0.0, 0.0, 1.0)
@@ -163,12 +163,12 @@ local open Geometry; open Scene; open FlatCamera in
     ]
   val cam = Camera (
     ray ( 
-      (~1.0, ~1.0, 4.0), 
-      (2.5, 2.0, 2.2)
+      (~1.0, ~1.0, 10.0), 
+      (5.5, 5.0, 2.2)
       ),
     Screen (
       (512.0, 512.0), 
-      Math.pi/4.0
+      Math.pi/6.0
       )
     )
 end;

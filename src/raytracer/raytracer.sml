@@ -30,7 +30,6 @@ struct
                    NONE
         end
 
-        val light = (Real.fromInt(10), Real.fromInt(0), Real.fromInt(10))
       in
         {
           ambient = Real.one,
@@ -79,6 +78,7 @@ struct
                         Shader.Dull => shaded
                       | Shader.Glossy transp => 
                           Rgb.add (
+                            (* Rgb.mul (1.0-transp, shaded), *)
                             shaded,
                             Rgb.mul (transp, 
                               #color (do_trace 
