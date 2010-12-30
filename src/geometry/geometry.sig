@@ -35,10 +35,11 @@ sig
   val length: vector -> scalar
   val norm: vector -> vector
   val nearer: vector * vector * vector -> bool
+  val reflect: vector * vector -> vector
 
   (* Parallellity/perpendicularity tests *)
-  val ||  : vector * vector -> bool
-  val -|  : vector * vector -> bool
+  val || : vector * vector -> bool
+  val -| : vector * vector -> bool
 end
 
 (* vim: set ft=sml tw=76 nowrap et: *)

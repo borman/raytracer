@@ -3,26 +3,25 @@ sig
   structure Shader: SHADER
   structure Geometry: GEOMETRY
 
-  type sphere = {
-    center: Geometry.vector, 
-    radius: Geometry.scalar
-    }
-  type plane = {
-    pivot: Geometry.vector, 
-    normal: Geometry.vector
-    }
-  datatype object 
-    = Sphere of sphere
+  type sphere = 
+   {center: Geometry.vector, 
+    radius: Geometry.scalar}
+
+  type plane = 
+   {pivot: Geometry.vector, 
+    normal: Geometry.vector}
+
+  datatype object =
+      Sphere of sphere
     | Plane of plane
-    | Group of (object list)
+    | Group of object list
     | Material of Shader.material * object
 
-  type collision = {
-    point: Geometry.vector, 
+  type collision = 
+   {point: Geometry.vector, 
     normal: Geometry.vector,
     object: object,
-    material: Shader.material
-    }
+    material: Shader.material}
 
   val intersect: Geometry.ray -> object -> collision option
 end

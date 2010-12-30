@@ -3,41 +3,42 @@ sig
   structure Rgb: RGB
   structure Geometry: GEOMETRY
 
-  datatype reflectiveness 
-    = Dull
+  datatype reflectiveness =
+      Dull
     | Glossy of Geometry.scalar
-  datatype refractiveness
-    = Opaque
-    | Transparent of {
-        transparency: Geometry.scalar,
-        refraction: Geometry.scalar
-        }
+
+  datatype refractiveness =
+      Opaque
+    | Transparent of 
+       {transparency: Geometry.scalar,
+        refraction: Geometry.scalar}
+        
   datatype diffuseMethod = Lambert
   datatype specularMethod = Phong | Blinn
   type method = diffuseMethod * specularMethod
-  type material = {
-    shader: method,
+
+  type material = 
+   {ambient: Geometry.scalar,
     ambientColor: Rgb.color,
-    diffuseColor: Rgb.color,
-    specularColor: Rgb.color,
-    ambient: Geometry.scalar,
     diffuse: Geometry.scalar,
-    specular: Geometry.scalar,
+    diffuseColor: Rgb.color,
+    shader: method,
     shininess: Geometry.scalar,
     reflect: reflectiveness,
-    refract: refractiveness
-    }
-  type light = {
+    refract: refractiveness,
+    specular: Geometry.scalar,
+    specularColor: Rgb.color}
+
+  type light = 
+   {diffuse: Geometry.scalar,
     point: Geometry.vector,
-    diffuse: Geometry.scalar,
-    specular: Geometry.scalar
-    }
-  type hit = {
-    ambient: Geometry.scalar,
+    specular: Geometry.scalar}
+
+  type hit = 
+   {ambient: Geometry.scalar,
+    normal: Geometry.vector,
     toCamera: Geometry.vector,
-    toLights: (Geometry.vector * light) list,
-    normal: Geometry.vector
-    }
+    toLights: (Geometry.vector * light) list}
 
   val defaultMaterial: material
 

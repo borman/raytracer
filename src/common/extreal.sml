@@ -1,4 +1,4 @@
-structure ExtReal : EXTREAL =
+structure ExtReal: EXTREAL =
 struct
   open Real
 
