@@ -1,36 +1,10 @@
 (*** Runner ***)
 
 (* Shorthands *)
-type render_worker = Camera.coords -> Raytracer.pixel
 type image = Raytracer.pixel Image.image
 
 val vec = Vector3D.vector
 
-
-fun antialias (w, h) (renderWorker: render_worker) =
-  let
-    val ds = 
-     [(0.0,        0.0),
-      (0.5/real w, 0.0),
-      (0.0,        0.5/real h),
-      (0.5/real w, 0.5/real h)]
-    fun shift (x, y) (dx, dy) = (x+dx, y+dy)
-    fun upd_real (v, acc) = acc + v*0.25
-    fun upd_rgb (v, acc) = Rgb.add(acc, Rgb.mul(0.25, v)) 
-    fun upd_pix (v: Raytracer.pixel, acc: Raytracer.pixel) = {
-      z = upd_real (#z v, #z acc),
-      angle = upd_real (#angle v, #angle acc),
-      color = upd_rgb (#color v, #color acc)
-      }
-  in
-  fn (x, y) =>
-    foldl 
-      upd_pix
-      {z = 0.0, angle = 0.0, color = Rgb.black} 
-      (map 
-        (renderWorker o shift (x, y))
-        ds)
-  end
 
 fun saveZ (img: image, filename) =
 let
@@ -100,8 +74,8 @@ let
     diffuse = 1.0,
     specularColor = Rgb.white,
     specular = 1.0,
-    shininess = 100.0,
-    reflect = Shader.Glossy 0.7,
+    shininess = 1000.0,
+    reflect = Shader.Glossy 0.6,
     refract = Shader.Opaque}
 
   val lights = 
@@ -136,7 +110,7 @@ let
                radius = r})
          end))),
     Material 
-     (solidMtl Rgb.white,
+     (solidMtl (Rgb.rgb (0.8, 0.8, 0.8)),
       Plane 
        {pivot = vec (0.0, 0.0, 0.0),
         normal = vec (0.0, 0.0, 1.0)})]
@@ -164,19 +138,23 @@ let
   val renderer = Raytracer.renderPixel (scene, lights) cam
 
   (* Turn antialiasing on *)
-  val renderer = 
+  val sampler = 
     if do_antialias 
-      then antialias image_size renderer
-    else renderer
+      then Raytracer.super4x
+    else Raytracer.noSample
 in
   print "Rendering...\n"
   ; 
   let
-    (* val img = Image.render renderer (512, 512) *)
+    (*
+    val img = Image.render 
+      (Raytracer.renderPixel (scene, lights) cam sampler (512, 512))
+      (512, 512)
+      *)
     val img = Image.array (512, 512, {z=0.0, angle=0.0, color=Rgb.black})
   in
     Image.modifyRegions 
-      (Raytracer.renderRegion (scene, lights) cam) 
+      (Raytracer.renderRegion (scene, lights) cam sampler) 
       (64, 64)
       img
     ; print "Rendered, saving...\n"

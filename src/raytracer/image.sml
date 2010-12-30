@@ -3,14 +3,12 @@ struct
   open Array2
 
   type 'a image = 'a array
+  type size = int * int
+  type coords = int * int
 
   fun render renderer (w, h): 'a image = 
-  let
-    val (rw, rh) = (real w, real h)
-  in
     tabulate RowMajor (w, h, 
-      fn (y, x) => renderer (real x / rw, real y / rh))
-  end
+      fn (y, x) => renderer (x, y))
 
   fun convert tabulator f image = 
   let
