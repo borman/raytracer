@@ -2,6 +2,9 @@ local
   $(SML_LIB)/basis/basis.mlb 
   ../common/common.mlb
 in
+  vector3d.sig
+  vector3d.sml
+
   geometry.sig
   geometry.sml
 end

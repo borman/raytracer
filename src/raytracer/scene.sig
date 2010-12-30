@@ -2,7 +2,7 @@ signature SCENE =
 sig
   type sphere = 
    {center: Geometry.vector, 
-    radius: Geometry.scalar}
+    radius: real}
 
   type plane = 
    {pivot: Geometry.vector, 

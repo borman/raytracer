@@ -4,8 +4,8 @@ struct
     open Geometry 
   in
     type pixel = 
-     {z: scalar, 
-      angle: scalar,
+     {z: real, 
+      angle: real,
       color: Rgb.color}
 
     fun trace (scene, lights) p_ray: pixel = 

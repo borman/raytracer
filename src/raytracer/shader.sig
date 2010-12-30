@@ -2,37 +2,37 @@ signature SHADER =
 sig
   datatype reflectiveness =
       Dull
-    | Glossy of Geometry.scalar
+    | Glossy of real
 
   datatype refractiveness =
       Opaque
     | Transparent of 
-       {transparency: Geometry.scalar,
-        refraction: Geometry.scalar}
+       {transparency: real,
+        refraction: real}
         
   datatype diffuseMethod = Lambert
   datatype specularMethod = Phong | Blinn
   type method = diffuseMethod * specularMethod
 
   type material = 
-   {ambient: Geometry.scalar,
+   {ambient: real,
     ambientColor: Rgb.color,
-    diffuse: Geometry.scalar,
+    diffuse: real,
     diffuseColor: Rgb.color,
     shader: method,
-    shininess: Geometry.scalar,
+    shininess: real,
     reflect: reflectiveness,
     refract: refractiveness,
-    specular: Geometry.scalar,
+    specular: real,
     specularColor: Rgb.color}
 
   type light = 
-   {diffuse: Geometry.scalar,
+   {diffuse: real,
     point: Geometry.vector,
-    specular: Geometry.scalar}
+    specular: real}
 
   type hit = 
-   {ambient: Geometry.scalar,
+   {ambient: real,
     normal: Geometry.vector,
     toCamera: Geometry.vector,
     toLights: (Geometry.vector * light) list}

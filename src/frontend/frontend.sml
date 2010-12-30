@@ -1,7 +1,10 @@
 (*** Runner ***)
 
+(* Shorthands *)
 type render_worker = Camera.coords -> Raytracer.pixel
 type image = Raytracer.pixel Image.image
+
+val vec = Vector3D.vector
 
 
 fun antialias (w, h) (renderWorker: render_worker) =
@@ -80,11 +83,12 @@ end
 
 (** Data **)
 
-local 
+fun createScene () = 
+let
   open Geometry 
   open Scene 
   open Camera 
-in
+
   fun solidMtl color = 
    {shader = (Shader.Lambert, Shader.Blinn),
     ambientColor = color,
@@ -98,10 +102,10 @@ in
     refract = Shader.Opaque}
 
   val lights = 
-   [{point = (8.0, 0.0, 10.0),
+   [{point = vec (8.0, 0.0, 10.0),
      diffuse = 0.5,
      specular = 0.5},
-    {point = (0.0, 8.0, 10.0),
+    {point = vec (0.0, 8.0, 10.0),
      diffuse = 0.5,
      specular = 0.5}]
 
@@ -113,9 +117,9 @@ in
          let
            val p = real (n div 10)
            val q = real (n mod 10)
-           val base = (2.0, 0.0, 0.1)
-           val middle = base +-> (5.0, 5.0, 0.0)
-           val pos = base +-> (p, q, 0.0)
+           val base = vec (2.0, 0.0, 0.1)
+           val middle = base +-> vec (5.0, 5.0, 0.0)
+           val pos = base +-> vec (p, q, 0.0)
            val r = 2.0 / (1.0 + length (middle --> pos))
            val color = 
             {r = p/10.0, 
@@ -125,21 +129,23 @@ in
            Material 
             (solidMtl color,
              Sphere 
-              {center = pos +-> (0.0, 0.0, r * 2.0),
+              {center = pos +-> vec (0.0, 0.0, r * 2.0),
                radius = r})
          end))),
     Material 
      (solidMtl Rgb.white,
       Plane 
-       {pivot = (0.0, 0.0, 0.0),
-        normal = (0.0, 0.0, 1.0)})]
+       {pivot = vec (0.0, 0.0, 0.0),
+        normal = vec (0.0, 0.0, 1.0)})]
 
   val cam =
-   {location = (~1.0, ~1.0, 10.0),
-    look_at = (5.5, 5.0, 2.2),
+   {location = vec (~1.0, ~1.0, 10.0),
+    look_at = vec (5.5, 5.0, 2.2),
     aspect = 1.0,
     angle = (Math.pi / 3.0) / Math.sqrt 2.0,
     projection = Rectilinear}
+in
+  (lights, scene, cam)
 end
 
 
@@ -151,6 +157,7 @@ let
 
   val image_size = (512, 512)
 
+  val (lights, scene, cam) = createScene ()
   val renderer = Raytracer.renderPixel (scene, lights) cam
 
   (* Turn antialiasing on *)

@@ -4,7 +4,7 @@ infix 7 dot
 infix 7 cross
 
 infix 6 -->
-infix 6 <--
+infix 6 --
 infix 6 +->
 
 infix 4 ||

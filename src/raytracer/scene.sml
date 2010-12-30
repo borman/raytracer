@@ -7,7 +7,7 @@ struct
   in
     type sphere = 
      {center: vector, 
-      radius: scalar}
+      radius: real}
     type plane = 
      {pivot: vector, 
       normal: vector}

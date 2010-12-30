@@ -1,11 +1,11 @@
 signature CAMERA = 
 sig
-  type coords = Geometry.scalar * Geometry.scalar
+  type coords = real * real
   datatype projection = Rectilinear
 
   type camera = 
-   {angle: Geometry.scalar,
-    aspect: Geometry.scalar,
+   {angle: real,
+    aspect: real,
     location: Geometry.vector,
     look_at: Geometry.vector,
     projection: projection}

@@ -7,13 +7,13 @@ struct
   in
     datatype reflectiveness =
         Dull
-      | Glossy of scalar
+      | Glossy of real
 
     datatype refractiveness =
         Opaque
       | Transparent of 
-         {transparency: scalar,
-          refraction: scalar}
+         {transparency: real,
+          refraction: real}
 
     datatype diffuseMethod = Lambert
     datatype specularMethod = Phong | Blinn
@@ -24,20 +24,20 @@ struct
       ambientColor: color,
       diffuseColor: color,
       specularColor: color,
-      ambient: scalar,
-      diffuse: scalar,
-      specular: scalar,
-      shininess: scalar,
+      ambient: real,
+      diffuse: real,
+      specular: real,
+      shininess: real,
       reflect: reflectiveness,
       refract: refractiveness}
 
     type light = 
      {point: vector,
-      diffuse: scalar,
-      specular: scalar}
+      diffuse: real,
+      specular: real}
 
     type hit = 
-     {ambient: scalar,
+     {ambient: real,
       toCamera: vector,
       toLights: (vector * light) list,
       normal: vector}
