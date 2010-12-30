@@ -1,8 +1,5 @@
 signature SHADER =
 sig
-  structure Rgb: RGB
-  structure Geometry: GEOMETRY
-
   datatype reflectiveness =
       Dull
     | Glossy of Geometry.scalar

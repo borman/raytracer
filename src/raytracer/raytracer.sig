@@ -1,10 +1,5 @@
 signature RAYTRACER =
 sig
-  structure Geometry: GEOMETRY
-  structure Scene: SCENE
-  structure Camera: CAMERA
-  structure Shader: SHADER
-
   type pixel
 
   val trace: (Scene.object * Shader.light list) -> Geometry.ray -> pixel

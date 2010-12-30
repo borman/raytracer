@@ -1,9 +1,5 @@
-functor Scene(structure G: GEOMETRY
-              structure S: SHADER): SCENE =
+structure Scene: SCENE =
 struct
-  structure Geometry = G
-  structure Shader = S
-
   local 
     open Geometry
     open Shader 

@@ -1,9 +1,5 @@
-functor Shader (structure C: RGB
-                structure G: GEOMETRY): SHADER =
+structure Shader: SHADER =
 struct
-  structure Rgb = C
-  structure Geometry = G
-
   local 
     open Geometry 
     open Rgb

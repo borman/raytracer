@@ -1,12 +1,5 @@
-functor Raytracer (structure S: SCENE
-                   structure C: CAMERA): RAYTRACER =
+structure Raytracer: RAYTRACER =
 struct
-  structure Geometry = C.Geometry
-  structure Scene = S
-  structure Shader = S.Shader
-  structure Rgb = Shader.Rgb
-  structure Camera = C
-
   local 
     open Geometry 
   in
@@ -23,7 +16,7 @@ struct
         let
           val lightRay = ray (point, #point light)
         in
-          case S.intersect lightRay scene of
+          case Scene.intersect lightRay scene of
                NONE => SOME (#direction lightRay, light)
              | SOME {point=hitPoint, ...} =>
                  if nearer (#direction lightRay, #point light, hitPoint) then
@@ -55,9 +48,9 @@ struct
 
       fun do_trace (_, 0) = voidPixel
         | do_trace (p_ray, n) =
-        case S.intersect p_ray scene of 
+        case Scene.intersect p_ray scene of 
              NONE => voidPixel
-           | SOME ({point, normal, material, ...}: S.collision) => 
+           | SOME ({point, normal, material, ...}: Scene.collision) => 
               {z = length (#origin p_ray --> point),
                angle = normal dot #direction p_ray,
                color = 

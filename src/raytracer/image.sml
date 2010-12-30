@@ -1,7 +1,5 @@
-functor Image (R: RGB) =
+structure Image =
 struct
-  structure Rgb = R
-
   type 'a image = 
    {width: int, 
     height: int,
@@ -19,8 +17,9 @@ struct
       (fn n =>
         let 
           val (x, y) = (n mod w, n div w)
+          val coords = (real x / real w, real y / real h)
         in
-          renderer (Real.fromInt x, Real.fromInt y)
+          renderer coords
         end))
     }
 

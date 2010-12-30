@@ -1,12 +1,16 @@
 signature CAMERA = 
 sig
-  structure Geometry: GEOMETRY
-
   type coords = Geometry.scalar * Geometry.scalar
-  type angle = Geometry.scalar
+  datatype projection = Rectilinear
 
-  datatype screen = Screen of coords * angle
-  datatype camera = Camera of Geometry.ray * screen
+  type camera = 
+   {angle: Geometry.scalar,
+    aspect: Geometry.scalar,
+    location: Geometry.vector,
+    look_at: Geometry.vector,
+    projection: projection}
+
+  exception Direction
 
   val projector: camera -> coords -> Geometry.ray
 end

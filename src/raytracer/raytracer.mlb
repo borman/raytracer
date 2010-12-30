@@ -3,17 +3,21 @@ local
   ../common/common.mlb
   ../geometry/geometry.mlb
 in
-  camera.sig
   rgb.sig
-  shader.sig
-  scene.sig
-  raytracer.sig
-
   rgb.sml
-  flatcamera.sml
-  image.sml
-  raytracer.sml
-  scene.sml
-  shader.sml
+
+  camera.sig
+  camera.sml
+
+  image.sml (* -> Rgb *)
+
+  shader.sig
+  shader.sml (* -> Rgb *)
+
+  scene.sig
+  scene.sml (* -> Shader *)
+
+  raytracer.sig
+  raytracer.sml (* -> Scene, Shader, Rgb *)
 end
 

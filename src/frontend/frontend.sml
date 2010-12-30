@@ -1,33 +1,17 @@
 (*** Runner ***)
 
-structure Image = Image (Rgb)
-structure Shader = Shader (
-  structure C = Rgb
-  structure G = Geometry)
-structure FlatCamera = FlatCamera (Geometry)
-structure Scene = Scene (
-  structure G = Geometry
-  structure S = Shader)
-structure Raytracer = Raytracer (
-  structure S = Scene
-  structure C = FlatCamera)
-
-type render_worker = FlatCamera.coords -> Raytracer.pixel
+type render_worker = Camera.coords -> Raytracer.pixel
 type image = Raytracer.pixel Image.image
 
 
-fun antialias (renderWorker: render_worker) =
-  fn (x, y) =>
+fun antialias (w, h) (renderWorker: render_worker) =
   let
     val ds = 
-     [(0.0, 0.0),
-      (0.5, 0.0),
-      (0.0, 0.5),
-      (0.5, 0.5)]
+     [(0.0,        0.0),
+      (0.5/real w, 0.0),
+      (0.0,        0.5/real h),
+      (0.5/real w, 0.5/real h)]
     fun shift (x, y) (dx, dy) = (x+dx, y+dy)
-    val subpixels = map 
-      (renderWorker o shift (x, y))
-      ds
     fun upd_real (v, acc) = acc + v*0.25
     fun upd_rgb (v, acc) = Rgb.add(acc, Rgb.mul(0.25, v)) 
     fun upd_pix (v: Raytracer.pixel, acc: Raytracer.pixel) = {
@@ -36,10 +20,13 @@ fun antialias (renderWorker: render_worker) =
       color = upd_rgb (#color v, #color acc)
       }
   in
+  fn (x, y) =>
     foldl 
       upd_pix
       {z = 0.0, angle = 0.0, color = Rgb.black} 
-      subpixels
+      (map 
+        (renderWorker o shift (x, y))
+        ds)
   end
 
 fun saveZ (img: image, filename) =
@@ -96,7 +83,7 @@ end
 local 
   open Geometry 
   open Scene 
-  open FlatCamera 
+  open Camera 
 in
   fun solidMtl color = 
    {shader = (Shader.Lambert, Shader.Blinn),
@@ -147,9 +134,12 @@ in
        {pivot = (0.0, 0.0, 0.0),
         normal = (0.0, 0.0, 1.0)})]
 
-  val cam = Camera 
-   (ray ((~1.0, ~1.0, 10.0), (5.5, 5.0, 2.2)),
-    Screen ((512.0, 512.0), Math.pi/6.0))
+  val cam =
+   {location = (~1.0, ~1.0, 10.0),
+    look_at = (5.5, 5.0, 2.2),
+    aspect = 1.0,
+    angle = (Math.pi / 3.0) / Math.sqrt 2.0,
+    projection = Rectilinear}
 end
 
 
@@ -159,12 +149,14 @@ fun main (arg0:string, argv: string list) =
 let
   val do_antialias = true
 
+  val image_size = (512, 512)
+
   val renderer = Raytracer.renderPixel (scene, lights) cam
 
   (* Turn antialiasing on *)
   val renderer = 
     if do_antialias 
-      then antialias renderer
+      then antialias image_size renderer
     else renderer
 in
   print "Rendering...\n"

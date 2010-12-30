@@ -1,8 +1,5 @@
 signature SCENE =
 sig
-  structure Shader: SHADER
-  structure Geometry: GEOMETRY
-
   type sphere = 
    {center: Geometry.vector, 
     radius: Geometry.scalar}
