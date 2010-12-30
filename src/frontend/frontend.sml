@@ -49,34 +49,37 @@ let
 
   val maxDepth = Real.min 
    (10.0, 
-    Image.foldl 
+    Image.fold 
       (fn (pix, acc) => maxNormal (#z pix, acc))
       0.0 
       img)
-  val textImg = Image.mapToGray 
-    (fn pix => chr (grayscale maxDepth (#z pix)))
+  val textImg = Image.toGray 
+    (chr o grayscale maxDepth o #z)
     img
 in
-  Image.saveGray (textImg, filename)
+  PNMWriter.save (filename, Image.size img, PNMWriter.Grayscale textImg)
 end
 
 fun saveNormals (img: image, filename) =
 let
   fun grayscale angle = 
-    Real.round (Real.min (1.0, Real.abs angle) * 255.0)
+    Real.round (Real.abs angle * 255.0)
 
-  val textImg = Image.mapToGray 
-    (fn pix => chr (grayscale (#angle pix)))
+  val textImg = Image.toGray 
+    (chr o grayscale o #angle)
     img
 in
-  Image.saveGray (textImg, filename)
+  PNMWriter.save (filename, Image.size img, PNMWriter.Grayscale textImg)
 end
 
 fun saveColors (img: image, filename) =
 let
-  val rgbImg = Image.map (#color) img
+  fun grayscale x = Real.round (x * 255.0)
+  fun rgb_to_string {r, g, b} = 
+    String.implode (map (chr o grayscale) [r, g, b])
+  val rgbImg = Image.toColor (rgb_to_string o #color) img
 in
-  Image.saveRGB (rgbImg, filename)
+  PNMWriter.save (filename, Image.size img, PNMWriter.Color rgbImg)
 end
 
 

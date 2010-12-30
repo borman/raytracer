@@ -6,10 +6,13 @@ in
   rgb.sig
   rgb.sml
 
-  camera.sig
-  camera.sml
+  pnm.sig
+  pnm.sml
 
   image.sml (* -> Rgb *)
+
+  camera.sig
+  camera.sml
 
   shader.sig
   shader.sml (* -> Rgb *)

@@ -1,86 +1,36 @@
 structure Image =
 struct
-  type 'a image = 
-   {width: int, 
-    height: int,
-    pixels: 'a vector}
-  type gray_image = 
-   {width: int, 
-    height: int,
-    pixels: CharVector.vector}
+  open Array2
 
-  fun render renderer (w, h): 'a image = {
-    width = w,
-    height = h,
-    pixels = Vector.tabulate 
-     (w*h, 
-      (fn n =>
-        let 
-          val (x, y) = (n mod w, n div w)
-          val coords = (real x / real w, real y / real h)
-        in
-          renderer coords
-        end))
-    }
+  type 'a image = 'a array
 
-  fun mapToGray f ({width, height, pixels}: 'a image) = 
-   {width = width,
-    height = height,
-    pixels = CharVector.tabulate 
-     ((width * height),
-      fn n => f (Vector.sub (pixels, n)))}
-
-  fun map f ({width, height, pixels}: 'a image) = 
-   {width = width,
-    height = height,
-    pixels = Vector.tabulate 
-     (width * height,
-      fn n => f (Vector.sub (pixels, n)))}
-
-  fun foldl f base (img: 'a image) = Vector.foldl f base (#pixels img)
-
-  fun saveGray (img: gray_image, filename) =
+  fun render renderer (w, h): 'a image = 
   let
-    val file = TextIO.openOut filename
+    val (rw, rh) = (real w, real h)
   in
-    TextIO.output (file, String.concat 
-     ["P5\n",
-      Int.toString(#width img),
-      " ",
-      Int.toString(#height img),
-      " ",
-      Int.toString(255),
-      "\n",
-      #pixels img])
-
-    ; TextIO.closeOut file
+    tabulate RowMajor (w, h, 
+      fn (y, x) => renderer (real x / rw, real y / rh))
   end
 
-  fun saveRGB (img: Rgb.color image, filename) =
+  fun convert tabulator f image = 
   let
-    open Real
-    val file = TextIO.openOut filename
-    fun rgb_to_str {r, g, b} = String.implode 
-     (List.map
-        (fn x => chr (round (fromInt(255) * x)))
-        [r, g, b])
+    val (h, w) = dimensions image
   in
-    TextIO.output (file, String.concat 
-      (["P6\n",
-        Int.toString(#width img),
-        " ",
-        Int.toString(#height img),
-        " ",
-        Int.toString(255),
-        "\n"] 
-       @ 
-        Vector.foldr 
-          (fn (col, acc) => rgb_to_str col :: acc)
-          []
-          (#pixels img)
-      ))
-      
-    ; TextIO.closeOut file
+    tabulator
+     (w*h,
+      fn n => f (sub (image, n div w, n mod w)))
+  end
+        
+  fun toGray f image = convert CharVector.tabulate f image
+  fun toColor f image = convert Vector.tabulate f image
+
+  fun fold f base img = Array2.fold RowMajor f base img
+
+  fun size img = 
+  let
+    val (h, w) = dimensions img
+  in
+    (w, h)
   end
 end
 
