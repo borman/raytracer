@@ -172,9 +172,14 @@ in
   print "Rendering...\n"
   ; 
   let
-    val img = Image.render renderer (512, 512)
+    (* val img = Image.render renderer (512, 512) *)
+    val img = Image.array (512, 512, {z=0.0, angle=0.0, color=Rgb.black})
   in
-    print "Rendered, saving...\n"
+    Image.modifyRegions 
+      (Raytracer.renderRegion (scene, lights) cam) 
+      (64, 64)
+      img
+    ; print "Rendered, saving...\n"
     ; saveZ (img, "ray_z.pgm")
     ; saveNormals (img, "ray_normals.pgm")
     ; saveColors (img, "ray_colors.ppm")

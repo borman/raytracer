@@ -12,6 +12,13 @@ struct
      {pivot: vector, 
       normal: vector}
 
+    type viewcone =
+     {source: vector,
+      topleft: vector,
+      topright: vector,
+      bottomleft: vector,
+      bottomright: vector}
+
     datatype object =
         Sphere of sphere
       | Plane of plane
@@ -27,6 +34,7 @@ struct
     (* Collisions nearer than sqrt(cutoff) will be ignored *)
     val cutoff_sq = 1E~10
 
+    (* Get the nearest point of intersection between a ray and a scene *)
     fun intersect ray scene = 
     let 
       val {origin, direction} = ray
@@ -100,6 +108,50 @@ struct
         | hit (_, Material (mtl, subscene)) = hit (mtl, subscene)
     in
       hit (defaultMaterial, scene)
+    end
+
+    (* Remove all objects that are not intersected by a view cone *)
+    fun cut cone scene =
+    let
+      val {source,
+           topleft,
+           topright,
+           bottomleft,
+           bottomright} = cone
+
+      fun test_sphere (object as {center, radius}) =
+      let
+        fun test (v1, v2) = 
+          (v1 cross v2) dot (source --> center) > ~radius
+      in
+        if test (bottomleft, topleft)
+           andalso test (topleft, topright)
+           andalso test (topright, bottomright)
+           andalso test (bottomright, bottomleft)
+          then SOME object
+        else NONE
+      end
+
+      fun test_plane plane = SOME plane
+
+      fun filterList f l = foldl
+        (fn (x, acc) => case f x of
+                             NONE => acc
+                           | SOME x => x::acc)
+        []
+        l
+      fun filterListOpt f l = case filterList f l of
+                                   [] => NONE
+                                 | l' => SOME l'
+
+      fun do_cut (Sphere sphere) = Option.compose (Sphere, test_sphere) sphere
+        | do_cut (Plane plane) = Option.compose (Plane, test_plane) plane
+        | do_cut (Material (mtl, obj)) = Option.compose 
+           (fn x => Material (mtl, x), do_cut) obj
+        | do_cut (Group objects) = Option.compose 
+           (Group, filterListOpt do_cut) objects 
+    in
+      do_cut scene
     end
   end
 end

@@ -32,6 +32,36 @@ struct
   in
     (w, h)
   end
+
+  fun modifyRegions f (blockWidth, blockHeight) image =
+  let
+    fun traverseCols (row, nrows, col) =
+      if col+blockWidth < nCols image
+        then  (f {base=image, 
+                 row=row, 
+                 col=col, 
+                 nrows=SOME nrows, 
+                 ncols=SOME blockWidth}
+              ; traverseCols (row, nrows, col+blockWidth))
+      else if col < nCols image
+        then f {base=image, 
+                row=row, 
+                col=col, 
+                nrows=SOME nrows, 
+                ncols=SOME (nCols image - col)}
+      else ()
+
+
+    fun traverseRows row =
+      if row+blockHeight < nRows image
+        then (traverseCols (row, blockHeight, 0)
+              ; traverseRows (row+blockHeight))
+      else if row < nRows image
+        then traverseCols (row, nRows image - row, 0) 
+      else ()
+  in
+    traverseRows 0
+  end
 end
 
 (* vim: set ft=sml tw=76 nowrap et: *)
